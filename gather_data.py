@@ -2,14 +2,17 @@ import os
 import glob
 import shutil
 import pickle as pkl
+from collections import defaultdict
 
-from PIL import Image
 import numpy as np
 import pandas as pd
-from collections import defaultdict
+import cv2
+import PIL
+import matplotlib.pyplot as plt
 
 from google_images_download import google_images_download
 
+cas_path = "data/haarcascade_frontalface_default.xml"
 keyword_l = []
 with open("data/names.txt", "r+") as f:
     names = f.readlines()
@@ -63,9 +66,12 @@ def get_data():
     for folder in file_dir:
         name = folder.split("/")[1].split("Star Trek")[0].rstrip()
         for file in glob.glob(folder+"/*"):
-            img = Image.open(file)
-            img = img.resize((244, 244))
+            img = PIL.Image.open(file)
+            img = np.array(img)
+            img_crop = crop_to_face(img)
+            img = cv2.resize(img_crop, (244, 244))
             img_arr = np.array(img)
+            print(img_arr.shape)
             if img_arr.shape == (244, 244, 3):
                 data[name].append(np.array(img_arr))
     # obtaining target dummy variables
@@ -78,7 +84,27 @@ def get_data():
     return data, data_int
 
 
-def export_dataset():
+def crop_to_face(image):
+    face_cas = cv2.CascadeClassifier(cas_path)
+    faces = face_cas.detectMultiScale(image, 1.05, 30, minSize=(60, 60))
+    image_with_detection = image.copy()
+    image_copy = image.copy()
+    # Draw a box around the face
+    p = 9
+    if len(faces) > 0:
+        for (x, y, w, h) in faces:
+            cv2.rectangle(image_with_detection,
+                          (x, y),
+                          (x+w, y+h),
+                          (255, 0, 0),
+                          3)
+            roi = image_copy[y-p: y+h+p, x-p: x+w+p]
+            return roi
+    else:
+        return image_copy
+
+
+def create_dataset():
     data, data_int = get_data()
     x = []
     y = []
@@ -89,6 +115,19 @@ def export_dataset():
     y_train = np.vstack(y)
     with open("data/train.pkl", "wb") as f:
         pkl.dump([x_train, y_train], f)
+    return x_train, y_train, data_int
 
 
-export_dataset()
+def display_images(images):
+    fig = plt.figure(figsize=(8, 8))
+    columns = 4
+    rows = 5
+    for i in range(1, columns*rows+1):
+        num = np.random.randint(x_train.shape[0])
+        fig.add_subplot(rows, columns, i)
+        plt.imshow(images[num])
+    plt.show()
+
+
+x_train, y_train, data_int = create_dataset()
+display_images(x_train)
