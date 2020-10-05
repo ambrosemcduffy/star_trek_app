@@ -15,7 +15,7 @@ class StarTrekModel(nn.Module):
         self.fc1 = nn.Linear(12800, 512)
         self.fc2 = nn.Linear(512, 1024)
         self.fc3 = nn.Linear(1024, 2048)
-        self.fc4 = nn.Linear(2048, 10)
+        self.fc4 = nn.Linear(2048, 2)
         self.drop = nn.Dropout(.25)
         self.drop2 = nn.Dropout(.5)
 
@@ -31,7 +31,6 @@ class StarTrekModel(nn.Module):
         x = F.relu(self.conv5(x))
         x = self.pool(x)
         x = x.view(x.size(0), -1)
-        #print(x.size())
         x = F.relu(self.fc1(x))
         x = self.drop(x)
         x = F.relu(self.fc2(x))

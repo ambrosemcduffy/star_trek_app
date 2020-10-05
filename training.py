@@ -4,26 +4,23 @@ import torch
 from torchvision import transforms, datasets
 import os
 from torch.optim import Adam, RMSprop, SGD
+from torch.autograd import Variable
 from torch import nn
 from model import StarTrekModel
 from gather_data import iterate_minibatches as data_loader
 
-transform = transforms.Compose([transforms.Resize(256),
-                                transforms.CenterCrop(244),
-                                transforms.RandomHorizontalFlip(),
-                                transforms.RandomVerticalFlip(),
-                                transforms.ToTensor()])
-star_trek_data = datasets.ImageFolder("downloads/", transform=transform)
-data_loader = torch.utils.data.DataLoader(star_trek_data,
-                                          batch_size=64,
-                                          shuffle=False)
+with open("data/train.pkl", "rb") as f:
+    x_train, y_train = pkl.load(f)
+
+y_train = np.argmax(y_train, axis=1)
+#star_trek_data = datasets.ImageFolder("downloads/", transform=transform)
 net = StarTrekModel().cuda()
 
 criterion = nn.CrossEntropyLoss()
 
 
 def train(epochs, lr=0.01):
-    optimizer = Adam(net.parameters(), lr=lr)
+    optimizer = RMSprop(net.parameters(), lr=lr)
     print_every = 1
     error_l = []
     epochs_l = []
@@ -31,9 +28,11 @@ def train(epochs, lr=0.01):
     for e in range(epochs):
         running_loss = 0.0
         torch.cuda.empty_cache()
-        for images, labels in data_loader:
+        for images, labels in data_loader(x_train, y_train, 32, shuffle=False):
             steps += 1
-            images = images / 255.
+            labels = Variable(torch.LongTensor(labels))
+            images = torch.FloatTensor(images) / 255.
+            images = images.resize(32, 3, 224, 224)
             optimizer.zero_grad()
             output = net(images.cuda())
             loss = criterion(output, labels.cuda())
@@ -54,4 +53,4 @@ def train(epochs, lr=0.01):
     return output, error_l, epochs_l
 
 
-output, error_l, epochs_l = train(70, lr=0.0001)
+output, error_l, epochs_l = train(300, lr=0.00001)

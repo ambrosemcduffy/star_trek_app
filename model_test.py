@@ -17,13 +17,13 @@ net = StarTrekModel()
 net.load_state_dict(torch.load("model/_strek_model_save.pt"))
 
 net.eval()
-img = cv2.imread("downloads/Beverly Crusher  Star Trek/4.7501e5d4da87ac39d782741cd794002d.jpg")
-crop_img = cv2.resize(crop_to_face(img), (244, 244))
+img = cv2.imread("old_spock.jpg")
+crop_img = cv2.resize(img, (224, 224))
 crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
 plt.imshow(crop_img)
 crop_img = crop_img/255.
 crop_img = torch.FloatTensor(crop_img)
-crop_img = crop_img.reshape(1, 3, 244, 244)
+crop_img = crop_img.reshape(1, 3, 224, 224)
 pred = net.forward(crop_img)
 
 out = pred.detach().cpu().numpy()

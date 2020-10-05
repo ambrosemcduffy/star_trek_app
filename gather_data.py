@@ -71,8 +71,8 @@ def get_data():
             img = PIL.Image.open(file)
             img = np.array(img)
             # Cropping the image to square dims
-            img_crop = crop_to_face(img)
-            img = cv2.resize(img_crop, (224, 224))
+            #img_crop = crop_to_face(img)
+            img = cv2.resize(img, (224, 224))
             img_arr = np.array(img)
             if img_arr.shape == (224, 224, 3):
                 data[name].append(np.array(img_arr))
@@ -140,12 +140,6 @@ def display_images(images):
     Return:
         None
     """
-    if type(images) != "torch.Tensor":
-        images = images.numpy()
-        images = images.reshape(images.shape[0],
-                                images.shape[2],
-                                images.shape[3],
-                                images.shape[1])
     fig = plt.figure(figsize=(8, 8))
     columns = 4
     rows = 5
