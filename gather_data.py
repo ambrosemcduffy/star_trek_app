@@ -23,7 +23,8 @@ with open("data/names.txt", "r+") as f:
         keyword_l.append(name.rstrip("\n"))
 
 
-def download_images(n_names=5, limit=20, download=False):
+def download_images(limit=20, download=False):
+    print("downloading {} images for each".format(limit))
     """ This function downloads images in based on keywords provided,
     from a text file in the downloads dir.
     The parameters are:
@@ -32,7 +33,7 @@ def download_images(n_names=5, limit=20, download=False):
         download: if True it will begin to download from google.
     Returns: None
     """
-
+    n_names = len(keyword_l)
     cnt = 0
     if download is True:
         # If downloads folder exist remove it.
@@ -61,16 +62,19 @@ def get_data():
     data = defaultdict(list)
     # Obtaining the names of star trek character, and import images
     file_dir = glob.glob("downloads/*")
+    cnt = 0
     for folder in file_dir:
-        name = folder.split("/")[1].split("Star Trek")[0].rstrip()
+        cnt += 1
+        print("importing folder {}".format(folder))
+        name = folder.split("\\")[1].split("Star Trek")[0].rstrip()
         for file in glob.glob(folder+"/*.jpg"):
             img = PIL.Image.open(file)
             img = np.array(img)
             # Cropping the image to square dims
             img_crop = crop_to_face(img)
-            img = cv2.resize(img_crop, (244, 244))
+            img = cv2.resize(img_crop, (224, 224))
             img_arr = np.array(img)
-            if img_arr.shape == (244, 244, 3):
+            if img_arr.shape == (224, 224, 3):
                 data[name].append(np.array(img_arr))
     # obtaining target dummy variables
     data_int = defaultdict(list)
@@ -93,11 +97,11 @@ def crop_to_face(image):
     # Importing the cascade file into the Classifier.
     face_cas = cv2.CascadeClassifier(cas_path)
     # Setting the parameters.
-    faces = face_cas.detectMultiScale(image, 1.05, 30, minSize=(60, 60))
+    faces = face_cas.detectMultiScale(image, 1.05, 30, minSize=(20, 20))
     image_with_detection = image.copy()
     image_copy = image.copy()
     # Draw a box around the face
-    p = 9
+    p = 90
     if len(faces) > 0:
         for (x, y, w, h) in faces:
             cv2.rectangle(image_with_detection,
@@ -105,7 +109,7 @@ def crop_to_face(image):
                           (x+w, y+h),
                           (255, 0, 0),
                           3)
-            roi = image_copy[y-p: y+h+p, x-p: x+w+p]
+            roi = image_copy[y-12: y+h+p, x-12: x+w+p]
             return roi
     else:
         return image_copy
@@ -118,7 +122,6 @@ def create_dataset():
         x_train: image array
         y_train: labels array
     """
-    data, data_int = get_data()
     x = []
     y = []
     for k, v in data.items():
@@ -128,7 +131,7 @@ def create_dataset():
     y_train = np.vstack(y)
     with open("data/train.pkl", "wb") as f:
         pkl.dump([x_train, y_train], f)
-    return x_train, y_train, data_int
+    return x_train, y_train
 
 
 def display_images(images):
@@ -137,13 +140,26 @@ def display_images(images):
     Return:
         None
     """
+    if type(images) != "torch.Tensor":
+        images = images.numpy()
+        images = images.reshape(images.shape[0],
+                                images.shape[2],
+                                images.shape[3],
+                                images.shape[1])
     fig = plt.figure(figsize=(8, 8))
     columns = 4
     rows = 5
     for i in range(1, columns*rows+1):
         num = np.random.randint(images.shape[0])
         fig.add_subplot(rows, columns, i)
-        plt.imshow(images[num])
+        if type(images) != "torch.Tensor":
+            plt.imshow(images[num], cmap="gray")
+            plt.xticks([])
+            plt.yticks([])
+        else:
+            plt.imshow(images[num])
+            plt.xticks([])
+            plt.yticks([])
     plt.show()
     return None
 
@@ -167,3 +183,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
+
+
+#data, data_int = get_data()
+#create_dataset()
