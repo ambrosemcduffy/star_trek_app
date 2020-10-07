@@ -13,7 +13,6 @@ with open("data/train.pkl", "rb") as f:
     x_train, y_train = pkl.load(f)
 
 y_train = np.argmax(y_train, axis=1)
-#star_trek_data = datasets.ImageFolder("downloads/", transform=transform)
 net = StarTrekModel().cuda()
 
 criterion = nn.CrossEntropyLoss()
@@ -28,14 +27,16 @@ def train(epochs, lr=0.01):
     for e in range(epochs):
         running_loss = 0.0
         torch.cuda.empty_cache()
-        for images, labels in data_loader(x_train, y_train, 32, shuffle=False):
+        for images, labels in data_loader(x_train, y_train, 32, shuffle=True):
             steps += 1
             labels = Variable(torch.LongTensor(labels))
             images = torch.FloatTensor(images) / 255.
+            images = images.cuda()
+            labels = labels.cuda()
             images = images.resize(32, 3, 224, 224)
             optimizer.zero_grad()
-            output = net(images.cuda())
-            loss = criterion(output, labels.cuda())
+            output = net(images)
+            loss = criterion(output, labels)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()

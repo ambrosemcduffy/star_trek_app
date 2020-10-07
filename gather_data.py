@@ -52,7 +52,7 @@ def download_images(limit=20, download=False):
     return None
 
 
-def get_data():
+def get_data(size = 224):
     """ This function returns a dictionary containing,
     data : images array for each character.
     data_int: labels array for each character
@@ -62,20 +62,17 @@ def get_data():
     data = defaultdict(list)
     # Obtaining the names of star trek character, and import images
     file_dir = glob.glob("downloads/*")
-    cnt = 0
     for folder in file_dir:
-        cnt += 1
-        print("importing folder {}".format(folder))
         name = folder.split("\\")[1].split("Star Trek")[0].rstrip()
-        for file in glob.glob(folder+"/*.jpg"):
+        for file in glob.glob(folder+"/*"):
             img = PIL.Image.open(file)
             img = np.array(img)
+            if img.shape[2] == 4:
+                img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
             # Cropping the image to square dims
-            #img_crop = crop_to_face(img)
-            img = cv2.resize(img, (224, 224))
+            img = cv2.resize(img, (size, size))
             img_arr = np.array(img)
-            if img_arr.shape == (224, 224, 3):
-                data[name].append(np.array(img_arr))
+            data[name].append(np.array(img_arr))
     # obtaining target dummy variables
     data_int = defaultdict(list)
     for k, v in data.items():
@@ -84,6 +81,54 @@ def get_data():
             data_int[k].append(dummies)
         data_int[k] = np.array(data_int[k])
     return data, data_int
+
+
+def create_dataset(data, data_int):
+    """ This function constructs a dataset from dictionaries
+    then saves the trainset and labels out as a pkl file.
+    Returns:
+        x_train: image array
+        y_train: labels array
+    """
+    x = []
+    y = []
+    for k, v in data.items():
+        x.append(np.array(data[k]))
+        y.append(np.array(data_int[k]))
+    x_train = np.vstack(x)
+    y_train = np.vstack(y)
+    with open("data/train.pkl", "wb") as f:
+        pkl.dump([x_train, y_train], f)
+    return x_train, y_train
+
+
+def display_images(images, targets):
+    """ This function take in an array of images, and
+    displays for exploratory Analysis.
+    Return:
+        None
+    """
+    fig = plt.figure(figsize=(8, 8))
+    columns = 4
+    rows = 5
+    targets = np.argmax(targets, axis=1)
+    for i in range(1, columns*rows+1):
+        num = np.random.randint(images.shape[0])
+        fig.add_subplot(rows, columns, i)
+
+        if type(images) != "torch.Tensor":
+            plt.imshow(images[num], cmap="gray")
+            plt.xticks([])
+            plt.yticks([])
+            plt.title(targets[num])
+        else:
+            plt.imshow(images[num])
+            #plt.xticks([])
+            #plt.yticks([])
+            plt.title("hey")
+            plt.tight_layout()
+    plt.show()
+    return None
 
 
 def crop_to_face(image):
@@ -115,49 +160,6 @@ def crop_to_face(image):
         return image_copy
 
 
-def create_dataset():
-    """ This function constructs a dataset from dictionaries
-    then saves the trainset and labels out as a pkl file.
-    Returns:
-        x_train: image array
-        y_train: labels array
-    """
-    x = []
-    y = []
-    for k, v in data.items():
-        x.append(np.array(data[k]))
-        y.append(np.array(data_int[k]))
-    x_train = np.vstack(x)
-    y_train = np.vstack(y)
-    with open("data/train.pkl", "wb") as f:
-        pkl.dump([x_train, y_train], f)
-    return x_train, y_train
-
-
-def display_images(images):
-    """ This function take in an array of images, and
-    displays for exploratory Analysis.
-    Return:
-        None
-    """
-    fig = plt.figure(figsize=(8, 8))
-    columns = 4
-    rows = 5
-    for i in range(1, columns*rows+1):
-        num = np.random.randint(images.shape[0])
-        fig.add_subplot(rows, columns, i)
-        if type(images) != "torch.Tensor":
-            plt.imshow(images[num], cmap="gray")
-            plt.xticks([])
-            plt.yticks([])
-        else:
-            plt.imshow(images[num])
-            plt.xticks([])
-            plt.yticks([])
-    plt.show()
-    return None
-
-
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     """This function creates a custom DataLoader
     parameters:
@@ -178,6 +180,12 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
 
+'''
+data, data_int = get_data(224)
+create_dataset(data, data_int)
 
-#data, data_int = get_data()
-#create_dataset()
+with open("data/train.pkl", "rb") as f:
+    x_train, y_train = pkl.load(f)
+
+display_images(x_train, y_train)
+'''

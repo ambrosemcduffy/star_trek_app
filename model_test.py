@@ -17,7 +17,7 @@ net = StarTrekModel()
 net.load_state_dict(torch.load("model/_strek_model_save.pt"))
 
 net.eval()
-img = cv2.imread("old_spock.jpg")
+img = cv2.imread("vulcan.JPG")
 crop_img = cv2.resize(img, (224, 224))
 crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
 plt.imshow(crop_img)
