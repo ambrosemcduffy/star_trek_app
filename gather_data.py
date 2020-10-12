@@ -14,13 +14,6 @@ from google_images_download import google_images_download
 
 # Importing in the Cascade file for face Detection.
 cas_path = "data/haarcascade_frontalface_default.xml"
-keyword_l = []
-
-# Reading in the names.txt file, and append names to a list.
-with open("data/names.txt", "r+") as f:
-    names = f.readlines()
-    for name in names:
-        keyword_l.append(name.rstrip("\n"))
 
 
 def download_images(limit=20, download=False):
@@ -33,6 +26,13 @@ def download_images(limit=20, download=False):
         download: if True it will begin to download from google.
     Returns: None
     """
+    keyword_l = []
+    # Reading in the names.txt file, and append names to a list.
+    with open("data/names.txt", "r+") as f:
+        names = f.readlines()
+        for name in names:
+            keyword_l.append(name.rstrip("\n"))
+
     n_names = len(keyword_l)
     cnt = 0
     if download is True:
@@ -52,7 +52,7 @@ def download_images(limit=20, download=False):
     return None
 
 
-def get_data(size = 224):
+def get_data(file_dir, size=224):
     """ This function returns a dictionary containing,
     data : images array for each character.
     data_int: labels array for each character
@@ -61,19 +61,20 @@ def get_data(size = 224):
     # Creating dictionary to store image files
     data = defaultdict(list)
     # Obtaining the names of star trek character, and import images
-    file_dir = glob.glob("downloads/*")
+    file_dir = glob.glob("{}*".format(file_dir))
     for folder in file_dir:
         name = folder.split("\\")[1].split("Star Trek")[0].rstrip()
         for file in glob.glob(folder+"/*"):
             img = PIL.Image.open(file)
             img = np.array(img)
-            if img.shape[2] == 4:
-                img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
-            # Cropping the image to square dims
-            img = cv2.resize(img, (size, size))
-            img_arr = np.array(img)
-            data[name].append(np.array(img_arr))
-    # obtaining target dummy variables
+            if len(img.shape) == 3:
+                if img.shape[2] == 4:
+                    img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+                # Cropping the image to square dims
+                img = cv2.resize(img, (size, size))
+                img_arr = np.array(img)
+                data[name].append(np.array(img_arr))
+        # obtaining target dummy variables
     data_int = defaultdict(list)
     for k, v in data.items():
         for i in range(len(v)):
@@ -83,7 +84,7 @@ def get_data(size = 224):
     return data, data_int
 
 
-def create_dataset(data, data_int):
+def create_dataset(data, data_int, name):
     """ This function constructs a dataset from dictionaries
     then saves the trainset and labels out as a pkl file.
     Returns:
@@ -97,7 +98,7 @@ def create_dataset(data, data_int):
         y.append(np.array(data_int[k]))
     x_train = np.vstack(x)
     y_train = np.vstack(y)
-    with open("data/train.pkl", "wb") as f:
+    with open("data/{}.pkl".format(name), "wb") as f:
         pkl.dump([x_train, y_train], f)
     return x_train, y_train
 
@@ -123,8 +124,8 @@ def display_images(images, targets):
             plt.title(targets[num])
         else:
             plt.imshow(images[num])
-            #plt.xticks([])
-            #plt.yticks([])
+            plt.xticks([])
+            plt.yticks([])
             plt.title("hey")
             plt.tight_layout()
     plt.show()
@@ -142,7 +143,7 @@ def crop_to_face(image):
     # Importing the cascade file into the Classifier.
     face_cas = cv2.CascadeClassifier(cas_path)
     # Setting the parameters.
-    faces = face_cas.detectMultiScale(image, 1.05, 30, minSize=(20, 20))
+    faces = face_cas.detectMultiScale(image, 1.05, 10)
     image_with_detection = image.copy()
     image_copy = image.copy()
     # Draw a box around the face
@@ -154,7 +155,7 @@ def crop_to_face(image):
                           (x+w, y+h),
                           (255, 0, 0),
                           3)
-            roi = image_copy[y-12: y+h+p, x-12: x+w+p]
+            roi = image_copy[y: y+h+p, x: x+w+p]
             return roi
     else:
         return image_copy
@@ -180,12 +181,13 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
 
-'''
-data, data_int = get_data(224)
-create_dataset(data, data_int)
 
-with open("data/train.pkl", "rb") as f:
-    x_train, y_train = pkl.load(f)
+def save_data(file_train, file_val):
+    data, data_int = get_data(file_train)
+    data_val, data_val_int = get_data(file_val)
+    x_train, y_train = create_dataset(data, data_int, "train_set")
+    x_val, y_val = create_dataset(data_val, data_val_int, "val_set")
+    return (x_train, y_train), (x_val, y_val)
 
-display_images(x_train, y_train)
-'''
+
+train_data, val_data = save_data("train_set/", "validation_set/")
