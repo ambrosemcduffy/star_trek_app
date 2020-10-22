@@ -1,38 +1,24 @@
-import torch.nn.functional as F
-
+from collections import OrderedDict
 from torch import nn
+from torchvision import models
 
 
-class StarTrekModel(nn.Module):
-    def __init__(self,):
-        super(StarTrekModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, 3)
-        self.conv2 = nn.Conv2d(32, 64, 3)
-        self.conv3 = nn.Conv2d(64, 128, 3)
-        self.conv4 = nn.Conv2d(128, 256, 3)
-        self.conv5 = nn.Conv2d(256, 512, 3)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(36864, 512)
-        self.fc2 = nn.Linear(512, 1024)
-        self.fc3 = nn.Linear(1024, 11)
-        self.fc4 = nn.Linear(2048, 11)
-        self.drop = nn.Dropout(.25)
-        self.drop2 = nn.Dropout(.5)
+def vgg16_pretrain():
+    vgg16_model = models.vgg16(pretrained=True)
 
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = self.pool(x)
-        x = F.relu(self.conv2(x))
-        x = self. pool(x)
-        x = F.relu((self.conv3(x)))
-        x = self.pool(x)
-        x = F.relu((self.conv4(x)))
-        x = self.pool(x)
-        #print(x.size())
-        x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
-        x = self.drop(x)
-        x = F.relu((self.fc2(x)))
-        x = self.drop(x)
-        x = F.log_softmax(self.fc3(x), dim=1)
-        return x
+    for param in vgg16_model.parameters():
+        param.requires_grad = False
+
+    classifer_dict = OrderedDict([("fc1", nn.Linear(25088, 128)),
+                                  ("Relu", nn.ReLU(inplace=True)),
+                                  ("Dropout1", nn.Dropout(0.5)),
+                                  ("fc2", nn.Linear(128, 256)),
+                                  ("Relu", nn.ReLU(inplace=True)),
+                                  ("Dropout2", nn.Dropout(0.25)),
+                                  ("f3", nn.Linear(256, 17)),
+                                  ("Softmax", nn.LogSoftmax(dim=1))])
+    classifier = nn.Sequential(classifer_dict)
+
+    vgg16_model.classifier = classifier.cuda()
+    vgg16_model = vgg16_model.cuda()
+    return vgg16_model

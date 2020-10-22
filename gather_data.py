@@ -188,6 +188,3 @@ def save_data(file_train, file_val):
     x_train, y_train = create_dataset(data, data_int, "train_set")
     x_val, y_val = create_dataset(data_val, data_val_int, "val_set")
     return (x_train, y_train), (x_val, y_val)
-
-
-save_data("train_set/", "validation_set/")
