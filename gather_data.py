@@ -112,7 +112,7 @@ def display_images(images, targets):
     fig = plt.figure(figsize=(8, 8))
     columns = 4
     rows = 5
-    targets = np.argmax(targets, axis=1)
+    #targets = np.argmax(targets, axis=1)
     for i in range(1, columns*rows+1):
         num = np.random.randint(images.shape[0])
         fig.add_subplot(rows, columns, i)
@@ -147,7 +147,7 @@ def crop_to_face(image):
     image_with_detection = image.copy()
     image_copy = image.copy()
     # Draw a box around the face
-    p = 90
+    p = 5
     if len(faces) > 0:
         for (x, y, w, h) in faces:
             cv2.rectangle(image_with_detection,
@@ -155,7 +155,7 @@ def crop_to_face(image):
                           (x+w, y+h),
                           (255, 0, 0),
                           3)
-            roi = image_copy[y: y+h+p, x: x+w+p]
+            roi = image_copy[y-p: y+h+p, x-p: x+w+p]
             return roi
     else:
         return image_copy
@@ -190,4 +190,4 @@ def save_data(file_train, file_val):
     return (x_train, y_train), (x_val, y_val)
 
 
-train_data, val_data = save_data("train_set/", "validation_set/")
+save_data("train_set/", "validation_set/")

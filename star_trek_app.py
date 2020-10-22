@@ -4,34 +4,55 @@ import pickle as pkl
 import numpy as np
 import matplotlib.pyplot as plt
 from model import StarTrekModel
-from gather_data import crop_to_face
+from gather_data import crop_to_face, display_images
 
-with open("data/train_set.pkl", "rb") as f:
+with open("data/val_set.pkl", "rb") as f:
     x_train, y_train = pkl.load(f)
 
 y_train = np.argmax(y_train, axis=1)
 
-img = cv2.imread("picard.jpg")
-#img = crop_to_face(img)
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-plt.imshow(img)
-def Prediction(image):
-    net = StarTrekModel()
-    net.load_state_dict(torch.load("model/_strek_model_save3.pt"))
 
+def Prediction(img):
+    preds = []
+    net = StarTrekModel()
+    net.load_state_dict(torch.load('model/_strek_model_save4.pt'))
     net.eval()
     with torch.no_grad():
-        image = cv2.resize(image, (224, 224))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = image/255.
-        image = torch.FloatTensor(image)
-        image = image.reshape(1, 3, 224, 224)
-        pred = net.forward(image)
-        out = torch.argmax(torch.exp(pred), dim=1)
-        out = out.detach().cpu().numpy()
-        print(out)
-        img_index = np.where(y_train == [out[0]])[0][0]
-        plt.imshow(x_train[img_index])
+        if len(img.shape) < 4:
+            image = cv2.resize(img, (224, 224))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = np.expand_dims(image, axis=0)
+            image = image.reshape(image.shape[0], 3, 224, 224)
+            image = image/255.
+            image = torch.FloatTensor(image)
+            pred = net.forward(image)
+            out = torch.argmax(torch.exp(pred), dim=1)
+            out = out.detach().cpu().numpy()
+            return out
+        elif len(img.shape) == 4:
+            for i in range(img.shape[0]):
+                image = img[i]
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                #image = crop_to_face(image)
+                if image.shape[:2] != (224, 224):
+                    image = cv2.resize(image, (224, 224))
+                    print(image.shape)
+                image = np.expand_dims(image, axis=0)
+                image = image.reshape(image.shape[0],
+                                      3,
+                                      224,
+                                      224)
+                image = image/255.
+                image = torch.FloatTensor(image)
+                pred = net.forward(image)
+                out = torch.argmax(torch.exp(pred), dim=1)
+                out = out.detach().cpu().numpy()
+                preds.append(out[0])
+            return preds
 
 
-Prediction(img)
+out = Prediction(x_train)
+print(str((out == y_train).mean() * 100)[:4] + " %")
+display_images(x_train, out)
+
+
