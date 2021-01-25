@@ -53,9 +53,13 @@ def download_images(limit=20, download=False):
 
 
 def get_data(file_dir, size=224):
-    """ This function returns a dictionary containing,
-    data : images array for each character.
-    data_int: labels array for each character
+    """ This function returns a dictionary with data.
+    Args:
+        file_dir: file directory 
+        size: what size doe sone wants to make the images
+    Returns:
+        data: images array for each character.
+        data_int: labels array for each character
     """
 
     # Creating dictionary to store image files
@@ -87,6 +91,10 @@ def get_data(file_dir, size=224):
 def create_dataset(data, data_int, name):
     """ This function constructs a dataset from dictionaries
     then saves the trainset and labels out as a pkl file.
+    Args:
+        data: input dataset
+        data_int: label associated with character
+        name: the name of person in class
     Returns:
         x_train: image array
         y_train: labels array
@@ -106,13 +114,16 @@ def create_dataset(data, data_int, name):
 def display_images(images, targets):
     """ This function take in an array of images, and
     displays for exploratory Analysis.
+    Args:
+        images: input image data
+        targets: categorical data
     Return:
         None
     """
     fig = plt.figure(figsize=(8, 8))
     columns = 4
     rows = 5
-    #targets = np.argmax(targets, axis=1)
+    targets = np.argmax(targets, axis=1)
     for i in range(1, columns*rows+1):
         num = np.random.randint(images.shape[0])
         fig.add_subplot(rows, columns, i)
@@ -126,7 +137,7 @@ def display_images(images, targets):
             plt.imshow(images[num])
             plt.xticks([])
             plt.yticks([])
-            plt.title("hey")
+            plt.title("Image")
             plt.tight_layout()
     plt.show()
     return None
@@ -135,6 +146,8 @@ def display_images(images, targets):
 def crop_to_face(image):
     """This function uses haarCascades to detect facial features,
     after the features are detected we cropp the image into ROI.
+    Args:
+        Image: input image given.
     Return:
         roi:cropped detected face image in square dimensions
         image_copy: if roi is not detected returns original image.
@@ -143,11 +156,11 @@ def crop_to_face(image):
     # Importing the cascade file into the Classifier.
     face_cas = cv2.CascadeClassifier(cas_path)
     # Setting the parameters.
-    faces = face_cas.detectMultiScale(image, 1.05, 10)
+    faces = face_cas.detectMultiScale(image, 1.05, 15)
     image_with_detection = image.copy()
     image_copy = image.copy()
     # Draw a box around the face
-    p = 5
+    p = 30
     if len(faces) > 0:
         for (x, y, w, h) in faces:
             cv2.rectangle(image_with_detection,
@@ -163,7 +176,7 @@ def crop_to_face(image):
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     """This function creates a custom DataLoader
-    parameters:
+    Args:
         inputs: image array dataset
         targets: label array dataset
         batchsize: [64, 128, 256]
@@ -183,6 +196,16 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 
 def save_data(file_train, file_val):
+    """ This function saves out the training data, and validation data.
+    Args:
+        file_train: training data.
+        file_val: validation data.
+    Returns:
+        x_train: training data.
+        y_trian: target dataset
+        x_val: validation data.
+        y_val: target validation data
+    """
     data, data_int = get_data(file_train)
     data_val, data_val_int = get_data(file_val)
     x_train, y_train = create_dataset(data, data_int, "train_set")

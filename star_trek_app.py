@@ -1,20 +1,20 @@
 import torch
+import glob
 import cv2
-import numpy as np
 import matplotlib.pyplot as plt
 from model import vgg16_pretrain
-from gather_data import crop_to_face
 from torchvision import transforms
 
-
+# Setting Normalization parameters for the pretrained network.
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 
 vgg16_model = vgg16_pretrain()
 vgg16_model.load_state_dict(torch.load("model/_strek_model_save1.pt"))
 
+# Importing the names of characters.
 with open("data/class_names.txt", "r+") as f:
-    l = f.readlines()
+    names_l = f.readlines()
 
 
 def display_images(images, name):
@@ -38,6 +38,11 @@ def display_images(images, name):
 
 
 def Predict(image):
+    """ This function predicts based on which star trek character,
+    one looks like.
+    Return:
+        name of the character one looks like.
+    """
     vgg16_model.eval()
     with torch.no_grad():
         image = cv2.imread(image)
@@ -49,7 +54,7 @@ def Predict(image):
         img = img.reshape(1, 3, 224, 224)
         pred = vgg16_model(img.cuda())
         pred = torch.argmax(torch.exp(pred), axis=1)
-        name = l[pred.detach().cpu().numpy()[0]].strip()
+        name = names_l[pred.detach().cpu().numpy()[0]].strip()
         image_ = cv2.imread("data/{}.jpg".format(name))
         image_ = cv2.cvtColor(image_, cv2.COLOR_BGR2RGB)
         images = [image, image_]

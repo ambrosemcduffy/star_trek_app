@@ -7,32 +7,37 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+# Setting Normalization parameters
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 
+# Transforming the data
 
 transform = transforms.Compose([transforms.Resize(256),
                                 transforms.CenterCrop(224),
+                                transforms.RandomHorizontalFlip(),
+                                transforms.RandomRotation([90, 180]),
+                                transforms.RandomVerticalFlip(),
                                 transforms.ToTensor(),
                                 transforms.Normalize(mean=mean, std=std)])
 
-
+# Import in the training data
 train_data = datasets.ImageFolder("train_set/", transform=transform)
 train_loader = torch.utils.data.DataLoader(train_data,
                                            batch_size=32,
-                                           shuffle=True)
-
+                                           shuffle=True, num_workers=0)
+# Importing in the validation data
 test_data = datasets.ImageFolder("validation_set/", transform=transform)
 test_loader = torch.utils.data.DataLoader(test_data,
                                           batch_size=32,
-                                          shuffle=True)
+                                          shuffle=True, num_workers=0)
 
-x_train, y_train = iter(train_loader).next()
 model = models.vgg16(pretrained=True)
 
 for param in model.parameters():
     param.requires_grad = False
 
+# Creating a classifier model
 classifer_dict = OrderedDict([("fc1", nn.Linear(25088, 128)),
                               ("Relu", nn.ReLU(inplace=True)),
                               ("Dropout1", nn.Dropout(0.5)),
@@ -43,14 +48,27 @@ classifer_dict = OrderedDict([("fc1", nn.Linear(25088, 128)),
                               ("Softmax", nn.LogSoftmax(dim=1))])
 classifier = nn.Sequential(classifer_dict)
 
-model.classifier = classifier.cuda()
-model = model.cuda()
+# Checking to see if gpu is availible if not use cpu.
+if torch.cuda.is_available():
+    model.classifier = classifier.cuda()
+    model = model.cuda()
+else:
+    model.classifier = classifier.cpu()
+    model = model.cpu()
 
 optimizer = optim.Adam(model.parameters(), lr=0.0007)
 criterion = nn.NLLLoss()
 
 
 def validation(test_loader, model):
+    """
+    This function is used to see how well we're doing on validation data.
+    Args:
+        test_loader: Dataloader for validation data.
+        model: Model classifer.
+    Returns:
+        returns training loss, and accuracy.
+    """
     running_loss = 0.0
     for images, labels in test_loader:
         output = model.forward(images.cuda())
@@ -63,7 +81,16 @@ def validation(test_loader, model):
         return running_loss, accuracy
 
 
+torch.backends.cudnn.benchmark = True
+
+
 def train(epochs):
+    """ This function is used to train the neural network
+    Args:
+        epochs: number of iterations.
+    Returns:
+        function returns the model used, and the predictions/outputs
+    """
     steps = 0
     print_every = 10
     for e in range(epochs):
@@ -91,23 +118,45 @@ def train(epochs):
     return model, output
 
 
-model, output = train(epochs=70)
+model, output = train(epochs=140)
 
 
 def piltoarray(img):
+    """ 
+    This function converts a pil image to a numpy array
+    Args:
+        img: images
+    Returns:
+        numpy array
+    """
     pil_image = transforms.ToPILImage()(img).convert("RGB")
     return np.array(pil_image)
 
 
 def displayTensorData(x, y):
+    """
+    This function helps convert pil images to arrays, and display them.
+    Args:
+        x: image data
+        y: target data/label
+    Returns:
+        None
+    """
     train_images = []
     for i in range(x_train.shape[0]):
         train_images.append(piltoarray(x[i]))
     train_images = np.array(train_images)
     display_images(train_images, y.detach().numpy())
+    return None
 
 
 def Predict(image):
+    """
+    This function predicts what photo looks like which star trek character
+    Args:
+        image: photos
+    Returns None
+    """
     model.eval()
     with torch.no_grad():
         img = cv2.imread(image)
@@ -120,3 +169,4 @@ def Predict(image):
         pred = model(img.cuda())
         pred = torch.argmax(torch.exp(pred), axis=1)
         print(pred)
+    return None
