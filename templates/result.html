@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Star Trek Lookalike</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <style>
+    :root {
+      --blue: #00bcd4;
+      --orange: #ff8c00;
+      --yellow: #e3c565;
+      --bg: #0a0a23;
+    }
+    *,*::before,*::after { box-sizing:border-box;margin:0;padding:0 }
+    html,body {
+      width:100%;min-height:100%;
+      background:var(--bg); color:white;
+      font-family:'Segoe UI',sans-serif;
+      overflow-x:hidden; overflow-y:auto;
+    }
+
+    /* ── Overlay Build‑Up ── */
+    #overlay {
+      position:fixed;top:0;left:0;
+      width:100%;height:100%;
+      background:rgba(0,0,0,0.95);
+      display:flex;align-items:center;
+      justify-content:center;
+      z-index:1000;
+      flex-direction:column;
+    }
+    #stepText {
+      color:var(--blue);
+      font-size:1.6rem;
+      text-shadow:0 0 8px var(--blue);
+      opacity:0;
+      transition:opacity .5s;
+    }
+
+    /* ── Starfield Background ── */
+    canvas { position:fixed;top:0;left:0;width:100%;height:100%;z-index:0; }
+
+    /* ── Main Content ── */
+    .container {
+      position:relative;z-index:1;
+      opacity:0;
+      transition:opacity 1s ease;
+      max-width:390px;margin:0 auto;
+      padding:env(safe-area-inset-top)20px 40px 20px;
+      text-align:center;
+    }
+    .container.visible { opacity:1; }
+
+    h1 {
+      font-size:1.8rem; color:var(--orange);
+      text-shadow:0 0 20px var(--orange);
+      margin-bottom:20px;
+      opacity:0;
+      animation:fadeIn .8s ease 0.2s forwards;
+    }
+
+    @keyframes fadeIn { to { opacity:1 } }
+
+    .image-row {
+      display:flex;justify-content:center;
+      gap:12px;margin:20px 0;
+    }
+
+    .img-panel {
+      position:relative;flex:0 1 45%;max-width:180px;
+      border-radius:12px;overflow:hidden;
+      background:rgba(255,255,255,0.05);
+      border:2px solid var(--blue);
+      box-shadow:0 0 20px var(--blue);
+      opacity:0;transform:translateY(20px);
+    }
+    .panel-uploaded.show {
+      animation:slideIn .6s ease 0.4s forwards,float 3s ease 0.4s infinite,glowBlue 3s ease 0.4s infinite;
+    }
+    .panel-match.show {
+      animation:slideIn .6s ease 0.8s forwards,float 3s ease 0.8s infinite,glowOrange 3s ease 0.8s infinite;
+    }
+    @keyframes slideIn { to{opacity:1;transform:translateY(0)} }
+    @keyframes float {0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    @keyframes glowBlue {0%,100%{box-shadow:0 0 20px var(--blue)}50%{box-shadow:0 0 60px var(--blue)}}
+    @keyframes glowOrange{0%,100%{box-shadow:0 0 20px var(--orange)}50%{box-shadow:0 0 60px var(--orange)}}
+
+    .panel-match {
+      border-color:var(--orange);
+      box-shadow:0 0 20px var(--orange);
+    }
+    .panel-match::after {
+      content:'';position:absolute;top:0;left:0;
+      width:100%;height:30%;
+      background:linear-gradient(to bottom,rgba(255,255,255,0.3),transparent);
+      opacity:0.8;pointer-events:none;
+    }
+    .panel-match::before {
+      content:'';position:absolute;top:0;left:-80%;
+      width:60%;height:100%;
+      background:linear-gradient(to right,transparent,rgba(255,255,255,0.5),transparent);
+      transform:skewX(-20deg);
+      animation:shine 1.2s ease 1.0s 1 forwards;
+      pointer-events:none;z-index:2;
+    }
+    @keyframes shine{0%{left:-80%}50%{left:120%}100%{left:120%}}
+
+    .img-panel img {
+      width:100%;height:auto;object-fit:contain;
+      transition:transform .3s ease;
+    }
+    .img-panel:hover img,
+    .img-panel:active img { transform:scale(1.05) }
+
+    .replicator-container{position:relative}
+    .replicator-lines {
+      position:absolute;top:0;left:0;width:100%;height:100%;
+      background-image:repeating-linear-gradient(0deg,rgba(255,140,0,0.3) 0,rgba(255,140,0,0.3) 2px,transparent 2px,transparent 6px);
+      animation:beam 1.2s linear 1.2s forwards;z-index:1;
+    }
+    @keyframes beam{0%{transform:translateY(-100%) }50%{transform:translateY(0)}90%{transform:translateY(100%)}100%{opacity:0}}
+
+    .match-img {
+      opacity:0;transform:scale(1.2);
+      transition:opacity .6s ease 2.4s,transform .6s ease 2.4s;
+    }
+
+    .bio-panel {
+      margin:20px 0;padding:12px;
+      background:rgba(0,0,0,0.3);
+      border:1px solid var(--yellow);
+      border-radius:8px;
+      opacity:0;transform:translateY(10px);
+      transition:opacity .6s ease 2.8s,transform .6s ease 2.8s;
+    }
+    .bio-panel.show { opacity:1;transform:translateY(0) }
+
+    a.try-again {
+      display:block;text-align:center;margin:20px 0;
+      color:var(--yellow);text-decoration:none;
+      font-size:1rem;border-bottom:1px solid var(--yellow);
+      opacity:0;animation:fadeIn .5s ease 3.2s forwards;
+    }
+    a.try-again:hover {color:#fff3aa}
+
+    @media (max-width:380px){
+      .image-row{flex-direction:column}
+      .img-panel{max-width:100%}
+      h1{font-size:1.6rem}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Overlay -->
+  <div id="overlay">
+    <h2>Starfleet Analysis</h2>
+    <div id="stepText"></div>
+  </div>
+
+  <!-- Starfield -->
+  <canvas id="warpField"></canvas>
+
+  <!-- Main Reveal -->
+  <div class="container">
+    <h1>You look like <strong>{{ name }}</strong>!</h1>
+    <div class="image-row">
+      <div class="img-panel panel-uploaded"><img src="{{ url_for('uploaded_file',filename=filename) }}"></div>
+      <div class="img-panel replicator-container panel-match">
+        <div class="replicator-lines"></div>
+        <img class="match-img" src="{{ url_for('static',filename='trek_faces/'+name+'.jpg') }}">
+      </div>
+    </div>
+    <div class="bio-panel"><h2>{{ name }}</h2><p>{{ bio }}</p></div>
+    <a href="/" class="try-again">Try another photo</a>
+  </div>
+
+  <script>
+    // Starfield
+    const c=document.getElementById('warpField'),ctx=c.getContext('2d'),stars=[];
+    function resize(){c.width=innerWidth;c.height=innerHeight;}
+    function init(n=100){stars.length=0;for(let i=0;i<n;i++)stars.push({
+      x:Math.random()*c.width,y:Math.random()*c.height,
+      speed:Math.random()*2+1,length:Math.random()*15+5,alpha:Math.random()*0.5+0.2
+    });}
+    function draw(){
+      ctx.clearRect(0,0,c.width,c.height);
+      stars.forEach(s=>{let g=ctx.createLinearGradient(s.x,s.y,s.x,s.y+s.length);
+        g.addColorStop(0,`rgba(0,188,212,${s.alpha})`);g.addColorStop(1,'rgba(0,188,212,0)');
+        ctx.strokeStyle=g;ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(s.x,s.y+s.length);ctx.stroke();
+        s.y+=s.speed; if(s.y>c.height){s.y=-s.length;s.x=Math.random()*c.width;}
+      });
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize',()=>{resize();init();});
+    resize();init();draw();
+
+    // Build‑up steps
+    const steps = ["Predicting…", "Calculating…", "Finalizing…"];
+    const text = document.getElementById('stepText');
+
+    function showStep(i){
+      if(i>=steps.length){
+        // done: hide overlay, reveal main
+        document.getElementById('overlay').style.transition='opacity .8s';
+        document.getElementById('overlay').style.opacity=0;
+        setTimeout(()=>document.getElementById('overlay').remove(),800);
+        document.querySelector('.container').classList.add('visible');
+        // start panels
+        setTimeout(()=>document.querySelector('.panel-uploaded').classList.add('show'),400);
+        setTimeout(()=>document.querySelector('.panel-match').classList.add('show'),1000);
+        setTimeout(()=>{
+          const rl=document.querySelector('.replicator-lines'),
+                mi=document.querySelector('.match-img'),
+                mp=document.querySelector('.panel-match');
+          rl.remove();
+          mi.style.opacity=1;mi.style.transform='scale(1)';
+          createParticles(25, mp);
+          document.querySelector('.bio-panel').classList.add('show');
+        },1800);
+        return;
+      }
+      text.style.opacity=1;
+      text.textContent = steps[i];
+      setTimeout(()=>{
+        text.style.opacity=0;
+        setTimeout(()=>showStep(i+1),500);
+      }, 1500);
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      showStep(0);
+    });
+
+    // Particle burst
+    function createParticles(c,container){
+      for(let i=0;i<c;i++){
+        const s=document.createElement('div');s.className='spark';
+        s.style.left='50%';s.style.top='50%';
+        container.appendChild(s);
+        const a=Math.random()*2*Math.PI,d=Math.random()*50+10,dx=Math.cos(a)*d,dy=Math.sin(a)*d;
+        requestAnimationFrame(()=>{
+          s.style.transition='transform .7s ease-out,opacity .7s ease-out';
+          s.style.transform=`translate(${dx}px,${dy}px) scale(0.2)`;
+          s.style.opacity=0;
+        });
+        setTimeout(()=>s.remove(),800);
+      }
+    }
+  </script>
+</body>
+</html>
