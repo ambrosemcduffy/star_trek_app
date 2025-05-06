@@ -5,6 +5,13 @@ from torchvision import models
 
 # loading in a vgg-16 pretrained model
 
+# Use Metal (MPS) if available
+if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device("mps")
+    print("✅ Using Metal (MPS) backend.")
+else:
+    device = torch.device("cpu")
+    print("⚠️ MPS not available. Using CPU.")
 
 def vgg16_pretrain():
     """ This function builds out pretrained classifier model.
@@ -27,10 +34,6 @@ def vgg16_pretrain():
                                   ("Softmax", nn.LogSoftmax(dim=1))])
     classifier = nn.Sequential(classifer_dict)
     # replacing the classific method with our own.
-    vgg16_model.classifier = classifier.cuda()
+    vgg16_model.classifier = classifier.to(device)
     # finding out if gpu is availible if not use cpu
-    if torch.cuda.is_available():
-        vgg16_model = vgg16_model.cuda()
-    else:
-        vgg16_model = vgg16_model.cpu()
-    return vgg16_model
+    return vgg16_model.to(device)

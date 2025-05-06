@@ -11,6 +11,33 @@ import matplotlib.pyplot as plt
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 
+
+from PIL import Image
+import os
+
+def clean_folder(folder):
+    for root, _, files in os.walk(folder):
+        for file in files:
+            path = os.path.join(root, file)
+            try:
+                img = Image.open(path)
+                img.verify()  # Validate image file
+            except (IOError, SyntaxError, Image.UnidentifiedImageError):
+                print(f"❌ Removing corrupted image: {path}")
+                os.remove(path)
+
+clean_folder("train_set/")
+clean_folder("validation_set/")
+
+# Use Metal (MPS) if available
+if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device("mps")
+    print("✅ Using Metal (MPS) backend.")
+else:
+    device = torch.device("cpu")
+    print("⚠️ MPS not available. Using CPU.")
+
+
 # Transforming the data
 
 transform = transforms.Compose([transforms.Resize(256),
@@ -49,12 +76,8 @@ classifer_dict = OrderedDict([("fc1", nn.Linear(25088, 128)),
 classifier = nn.Sequential(classifer_dict)
 
 # Checking to see if gpu is availible if not use cpu.
-if torch.cuda.is_available():
-    model.classifier = classifier.cuda()
-    model = model.cuda()
-else:
-    model.classifier = classifier.cpu()
-    model = model.cpu()
+model.classifier = classifier.to(device)
+model = model.to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=0.0007)
 criterion = nn.NLLLoss()
@@ -71,8 +94,8 @@ def validation(test_loader, model):
     """
     running_loss = 0.0
     for images, labels in test_loader:
-        output = model.forward(images.cuda())
-        loss = criterion(output, labels.cuda())
+        output = model.forward(images.to(device))
+        loss = criterion(output, labels.to(device))
         running_loss += loss.item()
         pred = torch.argmax(torch.exp(output), axis=1)
         pred = pred.detach().cpu().numpy()
@@ -81,7 +104,7 @@ def validation(test_loader, model):
         return running_loss, accuracy
 
 
-torch.backends.cudnn.benchmark = True
+# torch.backends.cudn.benchmark = True
 
 
 def train(epochs):
@@ -98,8 +121,8 @@ def train(epochs):
         for images, labels in train_loader:
             steps += 1
             optimizer.zero_grad()
-            output = model.forward(images.cuda())
-            loss = criterion(output, labels.cuda())
+            output = model.forward(images.to(device))
+            loss = criterion(output, labels.to(device))
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -118,7 +141,7 @@ def train(epochs):
     return model, output
 
 
-model, output = train(epochs=140)
+model, output = train(epochs=50)
 
 
 def piltoarray(img):
@@ -166,7 +189,7 @@ def Predict(image):
         img = transforms.ToTensor()(img)
         img = transforms.Normalize(mean, std)(img)
         img = img.reshape(1, 3, 224, 224)
-        pred = model(img.cuda())
+        pred = model(img.to(device))
         pred = torch.argmax(torch.exp(pred), axis=1)
         print(pred)
     return None

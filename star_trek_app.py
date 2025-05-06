@@ -5,12 +5,22 @@ import matplotlib.pyplot as plt
 from model import vgg16_pretrain
 from torchvision import transforms
 
+
+# Use Metal (MPS) if available
+if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device("mps")
+    print("✅ Using Metal (MPS) backend.")
+else:
+    device = torch.device("cpu")
+    print("⚠️ MPS not available. Using CPU.")
+
+
 # Setting Normalization parameters for the pretrained network.
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 
 vgg16_model = vgg16_pretrain()
-vgg16_model.load_state_dict(torch.load("model/_strek_model_save1.pt"))
+vgg16_model.load_state_dict(torch.load("model/_strek_model_save1.pt", map_location=torch.device("mps" if torch.backends.mps.is_available() else "cpu")))
 
 # Importing the names of characters.
 with open("data/class_names.txt", "r+") as f:
@@ -33,7 +43,7 @@ def display_images(images, name):
         plt.xticks([])
         plt.yticks([])
         plt.tight_layout()
-        plt.show()
+    plt.show()
     return None
 
 
@@ -52,11 +62,14 @@ def Predict(image):
         img = transforms.ToTensor()(img)
         img = transforms.Normalize(mean, std)(img)
         img = img.reshape(1, 3, 224, 224)
-        pred = vgg16_model(img.cuda())
+        pred = vgg16_model(img.to(device))
         pred = torch.argmax(torch.exp(pred), axis=1)
         name = names_l[pred.detach().cpu().numpy()[0]].strip()
-        image_ = cv2.imread("data/{}.jpg".format(name))
+        image_ = cv2.imread("./data/{}.jpg".format(name))
         image_ = cv2.cvtColor(image_, cv2.COLOR_BGR2RGB)
         images = [image, image_]
         display_images(images, name)
         return name
+
+
+Predict("./testRiinu.jpeg")

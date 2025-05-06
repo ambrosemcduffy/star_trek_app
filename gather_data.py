@@ -10,7 +10,7 @@ import cv2
 import PIL
 import matplotlib.pyplot as plt
 
-from google_images_download import google_images_download
+from simple_image_download import simple_image_download as simp
 
 # Importing in the Cascade file for face Detection.
 cas_path = "data/haarcascade_frontalface_default.xml"
@@ -28,7 +28,7 @@ def download_images(limit=20, download=False):
     """
     keyword_l = []
     # Reading in the names.txt file, and append names to a list.
-    with open("data/names.txt", "r+") as f:
+    with open("data/class_names.txt", "r+") as f:
         names = f.readlines()
         for name in names:
             keyword_l.append(name.rstrip("\n"))
@@ -40,14 +40,16 @@ def download_images(limit=20, download=False):
         if os.path.exists("downloads/") is True:
             shutil.rmtree("downloads/")
         # Download images.
-        response = google_images_download.googleimagesdownload()
+        response = simp.simple_image_download
+
         for k in keyword_l:
             if cnt == n_names:
                 break
-            arguments = {"keywords": k+" Star Trek",
-                         "limit": limit,
-                         "print_urls": True}
-            response.download(arguments)
+            # arguments = {"keywords": k+" Star Trek",
+            #              "limit": limit,
+            #              "print_urls": True}
+            response().download( k+" face Star Trek screenshot", limit)
+            # response.download(arguments)
             cnt += 1
     return None
 
@@ -67,17 +69,19 @@ def get_data(file_dir, size=224):
     # Obtaining the names of star trek character, and import images
     file_dir = glob.glob("{}*".format(file_dir))
     for folder in file_dir:
-        name = folder.split("\\")[1].split("Star Trek")[0].rstrip()
+        name = folder.split("/")[1].split("Star Trek")[0].rstrip()
         for file in glob.glob(folder+"/*"):
-            img = PIL.Image.open(file)
-            img = np.array(img)
-            if len(img.shape) == 3:
-                if img.shape[2] == 4:
-                    img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
-                # Cropping the image to square dims
-                img = cv2.resize(img, (size, size))
-                img_arr = np.array(img)
-                data[name].append(np.array(img_arr))
+            try:
+                img = cv2.imread(file)  # More consistent reading
+            except PIL.UnidentifiedImageError as e:
+                ##print(f"Error: {e} -- with file: {file} -- Skipping for now.. ")
+                continue
+            img = cv2.imread(file)  # More consistent reading
+            if img is None:
+                continue  # Skip unreadable files
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB format
+            img = cv2.resize(img, (size, size))
+            data[name].append(img)
         # obtaining target dummy variables
     data_int = defaultdict(list)
     for k, v in data.items():
@@ -211,3 +215,17 @@ def save_data(file_train, file_val):
     x_train, y_train = create_dataset(data, data_int, "train_set")
     x_val, y_val = create_dataset(data_val, data_val_int, "val_set")
     return (x_train, y_train), (x_val, y_val)
+
+def main():
+    download_images(50, True)
+    # data, data_int = get_data("./simple_images/", size=128)
+    # x_train, y_train = create_dataset(data, data_int, "train_set")
+    # # print(data, data_int)
+    # data, data_int = get_data("./simple_images/")
+    # x_train, y_train = create_dataset(data, data_int, "train_set")
+    # # data_val, data_val_int = get_data(file_val)
+    # x_train, y_train = create_dataset(data, data_int, "train_set")
+    # x_val, y_val = create_dataset(data_val, data_val_int, "val_set")
+    ##save_data("./simple_images/", "./simple_images/")
+
+main()
